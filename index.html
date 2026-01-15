@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- MQTT.js CDN -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #facc15;
+      --gray: #6b7280;
+      --border: #1f2933;
+      --blue: #3b82f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #020617, #0f172a);
+      color: var(--text);
+    }
+
+    /* Header (centered content) */
+    header {
+      padding: 30px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 40px;
+      color: var(--blue);
+      letter-spacing: 2px;
+    }
+
+    header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    header .subtitle {
+      margin-top: 8px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    header .creator {
+      margin-top: 14px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Connection status (top-right) */
+    .status-bar {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .connected { background: rgba(34,197,94,0.15); color: var(--green); }
+    .disconnected { background: rgba(239,68,68,0.15); color: var(--red); }
+    .reconnecting { background: rgba(250,204,21,0.15); color: var(--yellow); }
+
+    button {
+      background: #1f2937;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #374151;
+    }
+
+    main {
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    /* Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 28px;
+      margin: 8px 0;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .on { background: rgba(239,68,68,0.15); color: var(--red); }
+    .off { background: rgba(107,114,128,0.15); color: var(--gray); }
+
+    .time {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    /* Simulate section */
+    .simulate {
+      margin-top: 30px;
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .simulate-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .sim-buttons {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Alerts (below simulate) */
+    .alerts {
+      margin-top: 30px;
+      background: #020617;
+      border: 1px solid var(--border);
+      border-left: 6px solid var(--red);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .alerts h3 {
+      margin-top: 0;
+      color: var(--red);
+    }
+
+    .alert-item {
+      background: rgba(239,68,68,0.15);
+      border-left: 4px solid var(--red);
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .alert-time {
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>HOPE</h1>
+  <h2>Hardware Optimized For People In Emergency</h2>
+
+ 
+  <div class="creator">
+    Created by <strong>Niranjana Sreekanth</strong><br>
+    St. Therese HSS Shoranur, Palakkad, Kerala
+  </div>
+
+  <div class="status-bar">
+    <span id="connStatus" class="status disconnected">Disconnected ❌</span>
+    <button onclick="reconnect()">Reconnect</button>
+  </div>
+</header>
+
+<main>
+  <div class="cards" id="cards"></div>
+
+  <!-- Simulate section -->
+  <div class="simulate">
+    <div class="simulate-header" onclick="toggleSimulate()">
+      <h3 style="margin:0">🧪 Simulate Events (Local)</h3>
+      <button id="simToggleBtn">Minimize ⬆️</button>
+    </div>
+    <div class="sim-buttons" id="simButtons"></div>
+  </div>
+
+  <!-- Live alerts -->
+  <div class="alerts">
+    <h3>🚨 Live Alerts</h3>
+    <div id="alertList"></div>
+    <button style="margin-top:10px" onclick="clearAlerts()">Clear Alerts</button>
+  </div>
+</main>
+
+<script>
+  const brokerUrl = "ws://mqtt.niranjana.xyz:9001/mqtt";
+
+  const topics = {
+    "hope/state/voice2": { label: "WiFi Voice Alert", icon: "🎤", alert: "🚨 Distress detected from WiFi device" },
+    "hope/state/touch": { label: "Touch Button", icon: "🖐️", alert: "🖐️ Button pressed" },
+    "hope/state/flood": { label: "Flood Sensor", icon: "🌊", alert: "🌊 Flood alert!" },
+    "hope/state/voice1": { label: "LoRa Voice Alert", icon: "📡", alert: "📡 Distress detected from LoRa device" },
+    "hope/state/fall": { label: "Fall Detection", icon: "⚠️", alert: "⚠️ Fall detected from LoRa device" }
+  };
+
+  let client;
+  const cardsDiv = document.getElementById("cards");
+  const alertList = document.getElementById("alertList");
+  const connStatus = document.getElementById("connStatus");
+  const simButtons = document.getElementById("simButtons");
+  const simToggleBtn = document.getElementById("simToggleBtn");
+
+  function timeNow() {
+    return new Date().toLocaleTimeString();
+  }
+
+  function setStatus(type) {
+    connStatus.className = "status " + type;
+    connStatus.textContent =
+      type === "connected" ? "Connected ✅" :
+      type === "reconnecting" ? "Reconnecting 🔄" :
+      "Disconnected ❌";
+  }
+
+  function addAlert(msg) {
+    const div = document.createElement("div");
+    div.className = "alert-item";
+    div.innerHTML = `${msg}<div class="alert-time">${timeNow()}</div>`;
+    alertList.prepend(div);
+    if (alertList.children.length > 10) alertList.removeChild(alertList.lastChild);
+  }
+
+  function clearAlerts() {
+    alertList.innerHTML = "";
+  }
+
+  function handleMessage(topic, payload) {
+    const value = payload.toLowerCase().trim();
+    if (!topics[topic]) return;
+
+    const card = document.getElementById(topic);
+    const badge = card.querySelector(".badge");
+    const time = card.querySelector(".time");
+
+    badge.textContent = value.toUpperCase();
+    badge.className = "badge " + (value === "on" ? "on" : "off");
+    time.textContent = "Last updated: " + timeNow();
+
+    if (value === "on") addAlert(topics[topic].alert);
+  }
+
+  function toggleSimulate() {
+    simButtons.classList.toggle("hidden");
+    simToggleBtn.textContent = simButtons.classList.contains("hidden")
+      ? "Expand ⬇️"
+      : "Minimize ⬆️";
+  }
+
+  function connectMQTT() {
+    client = mqtt.connect(brokerUrl);
+
+    client.on("connect", () => {
+      setStatus("connected");
+      Object.keys(topics).forEach(t => client.subscribe(t));
+    });
+
+    client.on("reconnect", () => setStatus("reconnecting"));
+    client.on("close", () => setStatus("disconnected"));
+    client.on("error", () => setStatus("disconnected"));
+
+    client.on("message", (topic, message) => {
+      handleMessage(topic, message.toString());
+    });
+  }
+
+  function reconnect() {
+    if (client) client.end(true);
+    connectMQTT();
+  }
+
+  Object.keys(topics).forEach(topic => {
+    const c = document.createElement("div");
+    c.className = "card";
+    c.id = topic;
+    c.innerHTML = `
+      <h4>${topics[topic].label}</h4>
+      <div class="icon">${topics[topic].icon}</div>
+      <span class="badge off">OFF</span>
+      <div class="time">Last updated: --:--:--</div>
+    `;
+    cardsDiv.appendChild(c);
+
+    const onBtn = document.createElement("button");
+    onBtn.textContent = topics[topic].label + " ON";
+    onBtn.onclick = () => handleMessage(topic, "on");
+
+    const offBtn = document.createElement("button");
+    offBtn.textContent = topics[topic].label + " OFF";
+    offBtn.onclick = () => handleMessage(topic, "off");
+
+    simButtons.append(onBtn, offBtn);
+  });
+
+  connectMQTT();
+</script>
+
+</body>
+</html>
+```
