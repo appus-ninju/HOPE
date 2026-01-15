@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  
+  <title>HOPE – Emergency Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- MQTT.js CDN -->
@@ -33,23 +33,23 @@
       color: var(--text);
     }
 
-    /* Header (centered content) */
+    /* ===== HEADER ===== */
     header {
-      padding: 30px 20px;
+      padding: 32px 20px;
       border-bottom: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
-      gap: 6px;
       position: relative;
+      gap: 6px;
     }
 
     header h1 {
       margin: 0;
-      font-size: 40px;
+      font-size: 42px;
       color: var(--blue);
-      letter-spacing: 2px;
+      letter-spacing: 3px;
     }
 
     header h2 {
@@ -59,19 +59,13 @@
       color: var(--muted);
     }
 
-    header .subtitle {
-      margin-top: 8px;
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    header .creator {
+    .creator {
       margin-top: 14px;
       font-size: 14px;
       color: var(--muted);
     }
 
-    /* Connection status (top-right) */
+    /* ===== CONNECTION STATUS ===== */
     .status-bar {
       position: absolute;
       top: 20px;
@@ -112,7 +106,7 @@
       margin: auto;
     }
 
-    /* Cards */
+    /* ===== CARDS ===== */
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -125,6 +119,33 @@
       border-radius: 16px;
       padding: 16px;
       text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease;
+    }
+
+    /* ✨ SPARKLE EFFECT */
+    .card.sparkle::before {
+      content: "";
+      position: absolute;
+      inset: -50%;
+      background: linear-gradient(
+        120deg,
+        transparent 30%,
+        rgba(255,255,255,0.6),
+        transparent 70%
+      );
+      animation: sparkle 1.5s infinite;
+    }
+
+    .card.sparkle {
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.9);
+      transform: scale(1.04);
+    }
+
+    @keyframes sparkle {
+      from { transform: translateX(-100%) rotate(20deg); }
+      to   { transform: translateX(100%) rotate(20deg); }
     }
 
     .icon {
@@ -148,7 +169,7 @@
       margin-top: 8px;
     }
 
-    /* Simulate section */
+    /* ===== SIMULATE ===== */
     .simulate {
       margin-top: 30px;
       background: #020617;
@@ -175,7 +196,7 @@
       display: none;
     }
 
-    /* Alerts (below simulate) */
+    /* ===== ALERTS ===== */
     .alerts {
       margin-top: 30px;
       background: #020617;
@@ -212,7 +233,6 @@
   <h1>HOPE</h1>
   <h2>Hardware Optimized For People In Emergency</h2>
 
- 
   <div class="creator">
     Created by <strong>Niranjana Sreekanth</strong><br>
     St. Therese HSS Shoranur, Palakkad, Kerala
@@ -227,7 +247,6 @@
 <main>
   <div class="cards" id="cards"></div>
 
-  <!-- Simulate section -->
   <div class="simulate">
     <div class="simulate-header" onclick="toggleSimulate()">
       <h3 style="margin:0">🧪 Simulate Events (Local)</h3>
@@ -236,7 +255,6 @@
     <div class="sim-buttons" id="simButtons"></div>
   </div>
 
-  <!-- Live alerts -->
   <div class="alerts">
     <h3>🚨 Live Alerts</h3>
     <div id="alertList"></div>
@@ -261,6 +279,27 @@
   const connStatus = document.getElementById("connStatus");
   const simButtons = document.getElementById("simButtons");
   const simToggleBtn = document.getElementById("simToggleBtn");
+
+  /* 🔊 BUZZER USING WEB AUDIO API */
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function playBuzzer() {
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+    const oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    oscillator.type = "square";      // buzzer-like sound
+    oscillator.frequency.value = 800; // Hz
+    gain.gain.value = 0.15;
+
+    oscillator.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    oscillator.start();
+    setTimeout(() => oscillator.stop(), 400); // buzz duration
+  }
 
   function timeNow() {
     return new Date().toLocaleTimeString();
@@ -298,7 +337,13 @@
     badge.className = "badge " + (value === "on" ? "on" : "off");
     time.textContent = "Last updated: " + timeNow();
 
-    if (value === "on") addAlert(topics[topic].alert);
+    if (value === "on") {
+      card.classList.add("sparkle");
+      playBuzzer();                 // 🔊 BUZZ ON ALERT
+      addAlert(topics[topic].alert);
+    } else {
+      card.classList.remove("sparkle");
+    }
   }
 
   function toggleSimulate() {
@@ -358,4 +403,3 @@
 
 </body>
 </html>
-```
